@@ -1,10 +1,14 @@
-//
 // Modified by weyh
 // Inspired by Napalm/MetalHead (http://www.rohitab.com/discuss/index.php?showtopic=23191)
-//
 
 #include <iostream>
 #include <Windows.h>
+#include <chrono>
+#include <thread>
+#include <string>
+
+#include "argh.h"
+#include "screen-melter.h"
 
 int	meltWidth = 150,
 	meltHeight = 15,
@@ -29,8 +33,8 @@ LRESULT WINAPI MelterProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 		case WM_ERASEBKGND:
 			return 0;
 		case WM_PAINT:
-			//ValidateRect(hWnd, NULL);
-		{
+			ValidateRect(hWnd, NULL);
+		/*{
 			PAINTSTRUCT ps;
 			auto hdc = BeginPaint(hWnd, &ps);
 			RECT rc;
@@ -50,16 +54,16 @@ LRESULT WINAPI MelterProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 
 			EndPaint(hWnd, &ps);
 			break;
-		}
+		}*/
 			return 0;
 		case WM_TIMER:
 		{
-			/*HDC hdcWindow = GetDC(hWnd);
+			HDC hdcWindow = GetDC(hWnd);
 			int	x = (rand() % screenWidth) - (meltWidth / 2),
 				y = (rand() % meltHeight),
 				width = (rand() % meltWidth);
 			BitBlt(hdcWindow, x, y, width, screenHeight, hdcWindow, x, 0, SRCCOPY);
-			ReleaseDC(hWnd, hdcWindow);*/
+			ReleaseDC(hWnd, hdcWindow);
 		}
 		return 0;
 		case WM_CLOSE:
@@ -75,8 +79,24 @@ LRESULT WINAPI MelterProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int nShowCmd)
 {
+	argh::parser cmdl;
+	cmdl.add_params({ "-t", "--time" });
+	cmdl.parse(__argc, __argv);
+
+	std::string t = cmdl("t").str();
+	std::string _t = cmdl("time").str();
+
+	int time = 0;
+	if(!t.empty())
+		time = std::stoi(t);
+	if(!_t.empty())
+		time = std::stoi(_t);
+
+	WriteLog(std::to_string(time));
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(time));
+
 	SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
-	LPCWSTR szClassName = L"Melter";
 
 	//screenWidth = GetSystemMetrics(SM_CXSCREEN);
 	//screenHeight = GetSystemMetrics(SM_CYSCREEN);
@@ -84,7 +104,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
 	screenHeight = GetSystemMetrics(SM_CYVIRTUALSCREEN);
 
 	WNDCLASS wndClass;
-
 	wndClass.style = 0;
 	wndClass.lpfnWndProc = MelterProc;
 	wndClass.cbClsExtra = 0;
@@ -94,7 +113,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
 	wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);   // default arrow mouse cursor
 	wndClass.hbrBackground = (HBRUSH)(COLOR_BACKGROUND + 1);
 	wndClass.lpszMenuName = NULL;                     // no menu
-	wndClass.lpszClassName = szClassName;
+	wndClass.lpszClassName = L"Melter";
+
 	if(!RegisterClass(&wndClass))
 		return MessageBoxA(HWND_DESKTOP, "Cannot register class!", NULL, MB_ICONERROR | MB_OK);
 
