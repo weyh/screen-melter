@@ -1,13 +1,12 @@
 #pragma once
 
 #include "resource.h"
-#include <iostream>
 #include <fstream>
 
-void WriteLog(std::string s)
+void WriteLog(const char* text)
 {
-    std::ofstream myfile;
-    myfile.open ("debug.log");
-    myfile << s;
-    myfile.close();
+#ifdef _DEBUG
+    std::ofstream log("debug.log", std::ios_base::out | std::ios_base::app);
+    log << text << std::endl;
+#endif
 }

@@ -1,19 +1,20 @@
 // Modified by weyh
 // Inspired by Napalm/MetalHead (http://www.rohitab.com/discuss/index.php?showtopic=23191)
 
+#include "framework.h"
+#include "screen-melter.h"
+
 #include <iostream>
-#include <Windows.h>
 #include <chrono>
 #include <thread>
 #include <string>
 
 #include "argh.h"
-#include "screen-melter.h"
 
 int	meltWidth = 150,
 	meltHeight = 15,
-	meltSpeed = 1; // speed
-int	screenWidth, screenHeight;
+	interval = 1;
+int screenX, screenY, screenW, screenH;
 
 LRESULT WINAPI MelterProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
@@ -23,10 +24,10 @@ LRESULT WINAPI MelterProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 		{
 			HDC hdcDesktop = GetDC(HWND_DESKTOP);
 			HDC hdcWindow = GetDC(hWnd);
-			BitBlt(hdcWindow, 0, 0, screenWidth, screenHeight, hdcDesktop, 0, 0, SRCCOPY);
+			BitBlt(hdcWindow, screenX, screenY, screenW, screenH, hdcDesktop, 0, 0, SRCCOPY);
 			ReleaseDC(hWnd, hdcWindow);
 			ReleaseDC(HWND_DESKTOP, hdcDesktop);
-			SetTimer(hWnd, 0, meltSpeed, NULL);
+			SetTimer(hWnd, 0, interval, NULL);
 			ShowWindow(hWnd, SW_SHOW);
 		}
 		return 0;
@@ -34,35 +35,14 @@ LRESULT WINAPI MelterProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 			return 0;
 		case WM_PAINT:
 			ValidateRect(hWnd, NULL);
-		/*{
-			PAINTSTRUCT ps;
-			auto hdc = BeginPaint(hWnd, &ps);
-			RECT rc;
-			GetClientRect(hWnd, &rc);
-
-			HDC hdesktop = CreateDC(L"DISPLAY", NULL, NULL, NULL);
-
-			int screenx = GetSystemMetrics(SM_XVIRTUALSCREEN);
-			int screeny = GetSystemMetrics(SM_YVIRTUALSCREEN);
-			int screenw = GetSystemMetrics(SM_CXVIRTUALSCREEN);
-			int screenh = GetSystemMetrics(SM_CYVIRTUALSCREEN);
-
-			StretchBlt(hdc, 0, 0, rc.right, rc.bottom,
-					   hdesktop, screenx, screeny, screenw, screenh, SRCCOPY);
-
-			ReleaseDC(0, hdesktop);
-
-			EndPaint(hWnd, &ps);
-			break;
-		}*/
 			return 0;
 		case WM_TIMER:
 		{
 			HDC hdcWindow = GetDC(hWnd);
-			int	x = (rand() % screenWidth) - (meltWidth / 2),
+			int	x = (rand() % screenW) - (meltWidth / 2),
 				y = (rand() % meltHeight),
 				width = (rand() % meltWidth);
-			BitBlt(hdcWindow, x, y, width, screenHeight, hdcWindow, x, 0, SRCCOPY);
+			BitBlt(hdcWindow, x, y, width, screenH, hdcWindow, x, 0, SRCCOPY);
 			ReleaseDC(hWnd, hdcWindow);
 		}
 		return 0;
@@ -92,33 +72,25 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
 	if(!_t.empty())
 		time = std::stoi(_t);
 
-	WriteLog(std::to_string(time));
+	WriteLog(std::to_string(time).c_str());
 
 	std::this_thread::sleep_for(std::chrono::milliseconds(time));
 
 	SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
 
-	//screenWidth = GetSystemMetrics(SM_CXSCREEN);
-	//screenHeight = GetSystemMetrics(SM_CYSCREEN);
-	screenWidth = GetSystemMetrics(SM_CXVIRTUALSCREEN);
-	screenHeight = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+	screenX = GetSystemMetrics(SM_XVIRTUALSCREEN); // a |----------------------|
+	screenY = GetSystemMetrics(SM_YVIRTUALSCREEN); // b |a:b       |		   |
+	screenW = GetSystemMetrics(SM_CXVIRTUALSCREEN);// c |          |        c:d|
+	screenH = GetSystemMetrics(SM_CYVIRTUALSCREEN);// d |----------------------|
 
-	WNDCLASS wndClass;
-	wndClass.style = 0;
-	wndClass.lpfnWndProc = MelterProc;
-	wndClass.cbClsExtra = 0;
-	wndClass.cbWndExtra = 0;
-	wndClass.hInstance = hInstance;
-	wndClass.hIcon = LoadIcon(NULL, IDI_APPLICATION); // default icon
-	wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);   // default arrow mouse cursor
-	wndClass.hbrBackground = (HBRUSH)(COLOR_BACKGROUND + 1);
-	wndClass.lpszMenuName = NULL;                     // no menu
-	wndClass.lpszClassName = L"Melter";
+	WNDCLASS wndClass = {0, MelterProc, 0, 0, hInstance,
+		LoadIcon(NULL, IDI_APPLICATION), LoadCursor(NULL, IDC_ARROW),
+		(HBRUSH)(COLOR_BACKGROUND + 1), 0, L"Melter"};
 
 	if(!RegisterClass(&wndClass))
 		return MessageBoxA(HWND_DESKTOP, "Cannot register class!", NULL, MB_ICONERROR | MB_OK);
 
-	HWND hWnd = CreateWindowA("Melter", NULL, WS_POPUP, 0, 0, screenWidth, screenHeight, HWND_DESKTOP, NULL, hInstance, NULL);
+	HWND hWnd = CreateWindowA("Melter", NULL, WS_POPUP, screenX, screenY, screenW, screenH, HWND_DESKTOP, NULL, hInstance, NULL);
 	if(!hWnd)
 		return MessageBoxA(HWND_DESKTOP, "Cannot create window!", NULL, MB_ICONERROR | MB_OK);
 
