@@ -21,39 +21,40 @@ LRESULT WINAPI MelterProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 	switch(Msg)
 	{
 		case WM_CREATE:
-		{
-			HDC hdcDesktop = GetDC(HWND_DESKTOP);
-			HDC hdcWindow = GetDC(hWnd);
-			BitBlt(hdcWindow, screenX, screenY, screenW, screenH, hdcDesktop, 0, 0, SRCCOPY);
-			ReleaseDC(hWnd, hdcWindow);
-			ReleaseDC(HWND_DESKTOP, hdcDesktop);
-			SetTimer(hWnd, 0, interval, NULL);
-			ShowWindow(hWnd, SW_SHOW);
-		}
-		return 0;
+			{
+				HDC hdcDesktop = GetDC(HWND_DESKTOP);
+				HDC hdcWindow = GetDC(hWnd);
+				BitBlt(hdcWindow, screenX, screenY, screenW, screenH, hdcDesktop, 0, 0, SRCCOPY);
+				ReleaseDC(hWnd, hdcWindow);
+				ReleaseDC(HWND_DESKTOP, hdcDesktop);
+				SetTimer(hWnd, 0, interval, NULL);
+				ShowWindow(hWnd, SW_SHOW);
+			}
+			return 0;
 		case WM_ERASEBKGND:
 			return 0;
 		case WM_PAINT:
 			ValidateRect(hWnd, NULL);
 			return 0;
 		case WM_TIMER:
-		{
-			HDC hdcWindow = GetDC(hWnd);
-			int	x = (rand() % screenW) - (meltWidth / 2),
-				y = (rand() % meltHeight),
-				width = (rand() % meltWidth);
-			BitBlt(hdcWindow, x, y, width, screenH, hdcWindow, x, 0, SRCCOPY);
-			ReleaseDC(hWnd, hdcWindow);
-		}
-		return 0;
+			{
+				HDC hdcWindow = GetDC(hWnd);
+				int	x = (rand() % screenW) - (meltWidth / 2),
+					y = (rand() % meltHeight),
+					width = (rand() % meltWidth);
+				BitBlt(hdcWindow, x, y, width, screenH, hdcWindow, x, 0, SRCCOPY);
+				ReleaseDC(hWnd, hdcWindow);
+			}
+			return 0;
 		case WM_CLOSE:
 		case WM_DESTROY:
-		{
-			KillTimer(hWnd, 0);
-			PostQuitMessage(0);
-		}
-		return 0;
+			{
+				KillTimer(hWnd, 0);
+				PostQuitMessage(0);
+			}
+			return 0;
 	}
+
 	return DefWindowProc(hWnd, Msg, wParam, lParam);
 }
 
