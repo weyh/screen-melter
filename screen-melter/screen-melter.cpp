@@ -141,5 +141,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
 			SetCursorPos(0, 0);
 		#endif
 	}
+
 	return 0;
 }
