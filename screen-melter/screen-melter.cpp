@@ -9,9 +9,8 @@
 #include <thread>
 #include <string>
 
-#include "argh.h"
+#include "CLI11.hpp"
 
-bool disableInput = false;
 int	meltWidth = 150,
 	meltHeight = 15,
 	interval = 1;
@@ -79,25 +78,27 @@ LRESULT WINAPI MelterProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int nShowCmd)
 {
-	argh::parser cmdl;
-	cmdl.add_params({"-t", "--time"});
-	cmdl.parse(__argc, __argv);
+	CLI::App appArgs {"Creates melting like effect on users screen."};
 
-	std::string t = cmdl("t").str();
-	std::string _t = cmdl("time").str();
+	std::string time = "0";
+	appArgs.add_option("-t,--time", time, "Sleep time before visual effect (ms)");
 
-	int time = 0;
-	if(!t.empty())
-		time = std::stoi(t);
-	if(!_t.empty())
-		time = std::stoi(_t);
+	bool disableInput = false;
+	bool disableKeyboard = false;
+	bool disableMouse = false;
 
-	disableInput = cmdl[{"--disable_input"}];
+	appArgs.add_flag("-I,--disable_input", disableInput, "Disable user input.");
+	appArgs.add_flag("-K,--disable_keyboard", disableKeyboard, "Disable user keyboard.");
+	appArgs.add_flag("-M,--disable_mouse", disableMouse, "Disable user mouse.");
 
-	Debug::WriteLog("sleep_for: " + std::to_string(time));
+	CLI11_PARSE(appArgs, __argc, __argv);
+
+	Debug::WriteLog("sleep_for: " + time);
 	Debug::WriteLog("disable_input: " + BoolToString(disableInput));
+	Debug::WriteLog("disable_keyboard: " + BoolToString(disableKeyboard));
+	Debug::WriteLog("disable_mouse: " + BoolToString(disableMouse));
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(time));
+	std::this_thread::sleep_for(std::chrono::milliseconds(std::stoi(time)));
 
 	SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
 
@@ -118,8 +119,11 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
 		return MessageBoxA(HWND_DESKTOP, "Cannot create window!", NULL, MB_ICONERROR | MB_OK);
 
 	#ifndef _DEBUG
-	if(disableInput)
+	if(disableKeyboard || disableInput)
 		keyboardHhook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardHook, hInstance, 0);
+
+	if(disableMouse || disableInput)
+		ShowCursor(false);
 	#endif
 
 	srand(GetTickCount());
@@ -137,7 +141,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
 		#endif
 
 		#ifndef _DEBUG
-		if(disableInput)
+		if(disableMouse || disableInput)
 			SetCursorPos(0, 0);
 		#endif
 	}

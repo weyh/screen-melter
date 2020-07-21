@@ -7,8 +7,12 @@ However, many (if any) do not implement **multi-monitor support** and **dpi awar
 
 ### Args:
 
- - Disable user input: `--disable_input` (ctrl+alt+del still works)
  - Sleep time before visual effect (ms): `-t`, `--time` Example: `-t 2000`, `--time=2000`
+ - Disable user input: `-I,--disable_input` (ctrl+alt+del still works)
+ - Disable keyboard: `-K,--disable_keyboard` (ctrl+alt+del still works)
+ - Disable mouse: `-M,--disable_mouse`
+ 
+ E.g: `screen-melter_x86.exe -M --disable_keyboard -t 20`
  
 ### License
 
