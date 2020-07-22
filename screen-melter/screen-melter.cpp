@@ -1,5 +1,5 @@
 // Modified by weyh
-// Inspired by Napalm/MetalHead (http://www.rohitab.com/discuss/index.php?showtopic=23191)
+// Inspired by Napalm/MetalHead (http://www.rohitab.com/discuss/topic/23191-screen-melter/?p=190669)
 
 #include "framework.h"
 #include "screen-melter.h"
@@ -21,9 +21,9 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
 {
 	KBDLLHOOKSTRUCT* kbd = (KBDLLHOOKSTRUCT*)lParam;
 
-	if(code < 0
-	   || (kbd->flags & 0x10) // ignore injected events
-	   ) return CallNextHookEx(keyboardHhook, code, wParam, lParam);
+	// ignore injected events
+	if(code < 0 || (kbd->flags & 0x10))
+		return CallNextHookEx(keyboardHhook, code, wParam, lParam);
 
 	if(WM_KEYDOWN == wParam)
 		Debug::WriteLog("WM_KEYDOWN");
@@ -83,6 +83,10 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
 	std::string time = "0";
 	appArgs.add_option("-t,--time", time, "Sleep time before visual effect (ms)");
 
+	bool exitBool = false;
+	std::string exitTime = "-1"; // -1 -> infinite/not set
+	appArgs.add_option("-e,--exit_time", exitTime, "Sleep time before visual effect (ms)");
+
 	bool disableInput = false;
 	bool disableKeyboard = false;
 	bool disableMouse = false;
@@ -93,10 +97,11 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
 
 	CLI11_PARSE(appArgs, __argc, __argv);
 
-	Debug::WriteLog("sleep_for: " + time);
+	/*Debug::WriteLog("sleep_for: " + time);
+	Debug::WriteLog("exit_time: " + exitTime);
 	Debug::WriteLog("disable_input: " + BoolToString(disableInput));
 	Debug::WriteLog("disable_keyboard: " + BoolToString(disableKeyboard));
-	Debug::WriteLog("disable_mouse: " + BoolToString(disableMouse));
+	Debug::WriteLog("disable_mouse: " + BoolToString(disableMouse));*/
 
 	std::this_thread::sleep_for(std::chrono::milliseconds(std::stoi(time)));
 
@@ -126,6 +131,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
 		ShowCursor(false);
 	#endif
 
+	std::thread exitThread(WaitAndSet, std::stoi(exitTime), &exitBool);
+
 	srand(GetTickCount());
 	MSG Msg = {0};
 	while(Msg.message != WM_QUIT)
@@ -135,6 +142,10 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
 			TranslateMessage(&Msg);
 			DispatchMessage(&Msg);
 		}
+
+		if(exitBool)
+			DestroyWindow(hWnd);
+
 		#ifdef _DEBUG
 		if(GetAsyncKeyState(VK_ESCAPE) & 0x8000)
 			DestroyWindow(hWnd);
@@ -146,5 +157,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
 		#endif
 	}
 
+	exitThread.join();
 	return 0;
 }

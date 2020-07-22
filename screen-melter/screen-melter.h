@@ -1,6 +1,8 @@
 #pragma once
 
 #include "resource.h"
+#include <chrono>
+#include <thread>
 #include <string>
 
 #ifdef _DEBUG
@@ -12,6 +14,15 @@
 std::string BoolToString(bool b)
 {
     return b ? "true" : "false";
+}
+
+void WaitAndSet(int sleepTime, bool* boolToSet)
+{
+    if(sleepTime > -1)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime));
+        *boolToSet = true;
+    }
 }
 
 class Debug
