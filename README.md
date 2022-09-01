@@ -7,14 +7,18 @@ However, many (if any) do not implement **multi-monitor support** and **dpi awar
 
 ### Args:
 
- - Sleep time before visual effect (ms): `-t`, `--time` Example: `-t 2000`, `--time=2000`
- - The program closes automatically after this amount of time (ms): `-e`, `--exit_time` Example: `-e 10000`, `--exit_time=10000`
- - Disable user input: `-I,--disable_input` (ctrl+alt+del still works)
- - Disable keyboard: `-K,--disable_keyboard` (ctrl+alt+del still works)
- - Disable mouse: `-M,--disable_mouse`
- 
- E.g: `screen-melter_x86.exe -M --disable_keyboard -t 20 --exit_time=10000`
- 
+- Sleep time before visual effect (ms): `-t`, `--time` Example: `-t 2000`, `--time=2000`
+- The program closes automatically after this amount of time (ms): `-e`, `--exit_time` Example: `-e 10000`, `--exit_time=10000`
+- Disable user input: `-I,--disable_input` (ctrl+alt+del still works)
+- Disable keyboard: `-K,--disable_keyboard` (ctrl+alt+del still works)
+- Disable mouse: `-M,--disable_mouse`
+- Start on boot: `-B,--start_on_boot` (program will launch with provided args)
+
+**E.g:**
+
+- `screen-melter.exe -M --disable_keyboard -t 20 --exit_time=10000`
+- `screen-melter.exe -B "-t 2000 --exit_time=10000"`
+
 ### License
 
 This project is licensed under the MIT License - see the [MIT License](LICENSE) file for details.
