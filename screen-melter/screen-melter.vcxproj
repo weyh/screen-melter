@@ -159,18 +159,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="CLI11.hpp" />
-    <ClInclude Include="debug.h" />
-    <ClInclude Include="framework.h" />
-    <ClInclude Include="main.h" />
-    <ClInclude Include="Resource.h" />
-    <ClInclude Include="start_on_boot.h" />
-    <ClInclude Include="targetver.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="debug.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="start_on_boot.cpp" />
+    <ClInclude Include="include\CLI11.hpp" />
+    <ClInclude Include="include\debug.h" />
+    <ClInclude Include="include\framework.h" />
+    <ClInclude Include="include\main.h" />
+    <ClInclude Include="include\resource.h" />
+    <ClInclude Include="include\start_on_boot.h" />
+    <ClInclude Include="include\targetver.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="screen-melter.rc" />
@@ -178,6 +173,11 @@
   <ItemGroup>
     <Image Include="screen-melter.ico" />
     <Image Include="small.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\debug.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\start_on_boot.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
