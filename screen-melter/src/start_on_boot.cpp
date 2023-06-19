@@ -54,14 +54,13 @@ namespace StartOnBoot {
         WCHAR username[UNLEN + 1];
         DWORD username_len = UNLEN + 1;
 
-        // Retuns true if OK so we need to flip it for HRESULT
-        HRESULT ret = !GetUserName(username, &username_len);
-        if (ret != S_OK)
+        BOOL ret = GetUserName(username, &username_len);
+        if (!ret)
             return false;
 
-        std::wstring progName = std::filesystem::path(__argv[0]).filename().wstring();
+        const std::wstring progName = std::filesystem::path(__argv[0]).filename().wstring();
 
-        std::wstring linkPath = ::GetStartUpLinkPath(username, progName);
+        const std::wstring linkPath = ::GetStartUpLinkPath(username, progName);
         return std::filesystem::exists(linkPath);
     }
 
@@ -70,13 +69,12 @@ namespace StartOnBoot {
         WCHAR username[UNLEN + 1];
         DWORD username_len = UNLEN + 1;
 
-        // Retuns true if OK so we need to flip it for HRESULT
-        HRESULT ret = !GetUserName(username, &username_len);
-        if (ret != S_OK)
+        BOOL ret = GetUserName(username, &username_len);
+        if (!ret)
             return;
 
-        std::wstring progName = std::filesystem::path(__argv[0]).filename().wstring();
-        std::wstring linkPath = GetStartUpLinkPath(username, progName);
+        const std::wstring progName = std::filesystem::path(__argv[0]).filename().wstring();
+        const std::wstring linkPath = GetStartUpLinkPath(username, progName);
         if (std::filesystem::exists(linkPath))
             std::filesystem::remove(linkPath);
     }
@@ -86,26 +84,25 @@ namespace StartOnBoot {
         WCHAR username[UNLEN + 1];
         DWORD username_len = UNLEN + 1;
 
-        // Retuns true if OK so we need to flip it for HRESULT
-        HRESULT ret = !GetUserName(username, &username_len);
-        if (ret != S_OK)
+        bool ret = GetUserName(username, &username_len);
+        if (!ret)
             return E_FAIL;
 
-        std::wstring progName = std::filesystem::path(__argv[0]).filename().wstring();
+        const std::wstring progName = std::filesystem::path(__argv[0]).filename().wstring();
+        const std::wstring target = std::filesystem::temp_directory_path().wstring() + progName;
 
-        std::wstring target = std::filesystem::temp_directory_path().wstring() + progName;
-
-        ret = !std::filesystem::copy_file(__argv[0], target, std::filesystem::copy_options::overwrite_existing);
-        if (ret != S_OK)
+        ret = std::filesystem::copy_file(__argv[0], target, std::filesystem::copy_options::overwrite_existing);
+        if (!ret)
             return E_FAIL;
 
-        std::wstring linkPath = GetStartUpLinkPath(username, progName);
+        const std::wstring linkPath = GetStartUpLinkPath(username, progName);
 
-        if ((ret = CoInitialize(NULL)) == S_OK) {
-            ret = CreateLink(target.c_str(), linkPath.c_str(), L"", std::wstring(args.begin(), args.end()).c_str());
+        HRESULT initRet = CoInitialize(NULL);
+        if (initRet == S_OK) {
+            initRet = CreateLink(target.c_str(), linkPath.c_str(), L"", std::wstring(args.begin(), args.end()).c_str());
             CoUninitialize();
         }
 
-        return ret;
+        return initRet;
     }
 }

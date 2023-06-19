@@ -3,10 +3,10 @@
 
 #include "framework.h"
 #include "main.h"
+#include "start_on_boot.h"
 #include "debug.h"
 
 #include "CLI11.hpp"
-#include "start_on_boot.h"
 
 #include <iostream>
 #include <chrono>
@@ -30,7 +30,7 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
     if(WM_KEYDOWN == wParam)
         debug::WriteLog("WM_KEYDOWN");
 
-    return 1; // by default swallow the keys
+    return 1; // by default swallow keys
 }
 
 LRESULT WINAPI MelterProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
@@ -56,9 +56,11 @@ LRESULT WINAPI MelterProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
         case WM_TIMER:
             {
                 HDC hdcWindow = GetDC(hWnd);
-                int	x = (rand() % screen.y) - (meltWidth / 2),
-                    y = (rand() % meltHeight),
-                    width = (rand() % meltWidth);
+
+                int x = (rand() % screen.y) - (meltWidth / 2);
+                int y = (rand() % meltHeight);
+                int width = (rand() % meltWidth);
+
                 BitBlt(hdcWindow, x, y, width, screen.z, hdcWindow, x, 0, SRCCOPY);
                 ReleaseDC(hWnd, hdcWindow);
             }
@@ -76,34 +78,36 @@ LRESULT WINAPI MelterProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
     return DefWindowProc(hWnd, Msg, wParam, lParam);
 }
 
-/// <summary>
-/// Parses the command line arguments.
-/// </summary>
-/// <param name="appArgs">Data will be stored here.</param>
-/// <returns>0 on success</returns>
-static int ParseArgs(AppArgs& appArgs)
-{
-    CLI::App app("Creates melting like effect on users screen.", "Screen Melter");
+namespace {
+    /// <summary>
+    /// Parses the command line arguments.
+    /// </summary>
+    /// <param name="appArgs">Data will be stored here.</param>
+    /// <returns>0 on success</returns>
+    int ParseArgs(AppArgs& appArgs)
+    {
+        CLI::App app("Creates melting like effect on users screen.", "Screen Melter");
 
-    app.add_option("-t,--time", appArgs.time, "Sleep time before visual effect (ms)");
-    app.add_option("-e,--exit_time", appArgs.exitTime, "Sleep time before visual effect (ms)");
+        app.add_option("-t,--time", appArgs.time, "Sleep time before visual effect (ms)");
+        app.add_option("-e,--exit_time", appArgs.exitTime, "Sleep time before visual effect (ms)");
 
-    app.add_option("-B,--start_on_boot", appArgs.startupArgs, "Run screen melter on next boot with given args.");
+        app.add_option("-B,--start_on_boot", appArgs.startupArgs, "Run screen melter on next boot with given args.");
 
-    app.add_flag("-I,--disable_input", appArgs.disableInput, "Disable user input.");
-    app.add_flag("-K,--disable_keyboard", appArgs.disableKeyboard, "Disable user keyboard.");
-    app.add_flag("-M,--disable_mouse", appArgs.disableMouse, "Disable user mouse.");
+        app.add_flag("-I,--disable_input", appArgs.disableInput, "Disable user input.");
+        app.add_flag("-K,--disable_keyboard", appArgs.disableKeyboard, "Disable user keyboard.");
+        app.add_flag("-M,--disable_mouse", appArgs.disableMouse, "Disable user mouse.");
 
-    CLI11_PARSE(app, __argc, __argv);
+        CLI11_PARSE(app, __argc, __argv);
 
-    debug::WriteLog("sleep_for: " + std::to_string(appArgs.time));
-    debug::WriteLog("exit_time: " + std::to_string(appArgs.exitTime));
-    debug::WriteLog("disable_input: " + btos(appArgs.disableInput));
-    debug::WriteLog("disable_keyboard: " + btos(appArgs.disableKeyboard));
-    debug::WriteLog("disable_mouse: " + btos(appArgs.disableMouse));
-    debug::WriteLog("startup: " + appArgs.startupArgs);
+        debug::WriteLog("sleep_for: " + std::to_string(appArgs.time));
+        debug::WriteLog("exit_time: " + std::to_string(appArgs.exitTime));
+        debug::WriteLog("disable_input: " + btos(appArgs.disableInput));
+        debug::WriteLog("disable_keyboard: " + btos(appArgs.disableKeyboard));
+        debug::WriteLog("disable_mouse: " + btos(appArgs.disableMouse));
+        debug::WriteLog("startup: " + appArgs.startupArgs);
 
-    return 0;
+        return 0;
+    }
 }
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int nShowCmd)
@@ -122,11 +126,12 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
 
     if (!appArgs.startupArgs.empty())
     {
-        HRESULT hr = SetupStartOnBoot(appArgs.startupArgs);
+        const HRESULT hr = SetupStartOnBoot(appArgs.startupArgs);
         if(hr == S_OK)
-            std::cout << "The will be run on next boot with '" << appArgs.startupArgs << "' args." << std::endl;
+            std::cout << "The program will be run on next boot with '" << appArgs.startupArgs << "' args." << std::endl;
         else
-            std::cerr << "Failt to create nesesry files to run on next boot!" << std::endl;
+            std::cerr << "Failed to create necessary files to run on next boot!" << std::endl;
+
         return hr == S_OK;
     }
 
