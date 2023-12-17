@@ -13,9 +13,9 @@
 #include <thread>
 #include <string>
 
-int	meltWidth = 150,
-    meltHeight = 15,
-    interval = 1;
+constexpr int meltWidth = 150;
+constexpr int meltHeight = 15;
+constexpr int interval = 1;
 Vector4<int> screen;
 HHOOK keyboardHhook;
 
@@ -41,10 +41,14 @@ LRESULT WINAPI MelterProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
             {
                 HDC hdcDesktop = GetDC(HWND_DESKTOP);
                 HDC hdcWindow = GetDC(hWnd);
+
                 BitBlt(hdcWindow, screen.w, screen.x, screen.y, screen.z, hdcDesktop, 0, 0, SRCCOPY);
+
                 ReleaseDC(hWnd, hdcWindow);
                 ReleaseDC(HWND_DESKTOP, hdcDesktop);
+
                 SetTimer(hWnd, 0, interval, NULL);
+
                 ShowWindow(hWnd, SW_SHOW);
             }
             return 0;
@@ -177,8 +181,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
         }
     });
 
-
-    srand(GetTickCount64());
+    srand((unsigned int)GetTickCount64());
     MSG msg = {0};
     while(msg.message != WM_QUIT)
     {
