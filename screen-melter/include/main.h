@@ -4,11 +4,6 @@
 #include <thread>
 #include <string>
 
-inline std::string btos(const bool &b)
-{
-    return b ? "true" : "false";
-}
-
 template<typename T>
 struct Vector4
 {
@@ -25,7 +20,9 @@ public:
 
     std::string startupArgs;
 
+    bool killExpolerOnStart;
+
     AppArgs() : time(0), exitTime(-1), disableInput(false), disableKeyboard(false), disableMouse(false),
-        startupArgs("")
+        startupArgs(""), killExpolerOnStart(false)
     { }
 };

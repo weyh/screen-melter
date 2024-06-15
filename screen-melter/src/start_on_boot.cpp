@@ -58,7 +58,12 @@ namespace StartOnBoot {
         if (!ret)
             return false;
 
-        const std::wstring progName = std::filesystem::path(__argv[0]).filename().wstring();
+        int nArgs;
+        LPWSTR* szArglist = CommandLineToArgvW(GetCommandLineW(), &nArgs);
+        if (!szArglist || nArgs == 0)
+            return false;
+
+        const std::wstring progName = std::filesystem::path(szArglist[0]).filename().wstring();
 
         const std::wstring linkPath = ::GetStartUpLinkPath(username, progName);
         return std::filesystem::exists(linkPath);

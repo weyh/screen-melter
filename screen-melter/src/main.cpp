@@ -12,6 +12,7 @@
 #include <chrono>
 #include <thread>
 #include <string>
+#include <tlhelp32.h>
 
 constexpr int meltWidth = 150;
 constexpr int meltHeight = 15;
@@ -28,7 +29,7 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
         return CallNextHookEx(keyboardHhook, code, wParam, lParam);
 
     if(WM_KEYDOWN == wParam)
-        debug::WriteLog("WM_KEYDOWN");
+        DEBUG_INFO("WM_KEYDOWN");
 
     return 1; // by default swallow keys
 }
@@ -82,39 +83,115 @@ LRESULT WINAPI MelterProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
     return DefWindowProc(hWnd, Msg, wParam, lParam);
 }
 
-namespace {
-    /// <summary>
-    /// Parses the command line arguments.
-    /// </summary>
-    /// <param name="appArgs">Data will be stored here.</param>
-    /// <returns>0 on success</returns>
-    int ParseArgs(AppArgs& appArgs)
-    {
-        CLI::App app("Creates melting like effect on users screen.", "Screen Melter");
-
-        app.add_option("-t,--time", appArgs.time, "Sleep time before visual effect (ms)");
-        app.add_option("-e,--exit_time", appArgs.exitTime, "Sleep time before visual effect (ms)");
-
-        app.add_option("-B,--start_on_boot", appArgs.startupArgs, "Run screen melter on next boot with given args.");
-
-        app.add_flag("-I,--disable_input", appArgs.disableInput, "Disable user input.");
-        app.add_flag("-K,--disable_keyboard", appArgs.disableKeyboard, "Disable user keyboard.");
-        app.add_flag("-M,--disable_mouse", appArgs.disableMouse, "Disable user mouse.");
-
-        CLI11_PARSE(app, __argc, __argv);
-
-        debug::WriteLog("sleep_for: " + std::to_string(appArgs.time));
-        debug::WriteLog("exit_time: " + std::to_string(appArgs.exitTime));
-        debug::WriteLog("disable_input: " + btos(appArgs.disableInput));
-        debug::WriteLog("disable_keyboard: " + btos(appArgs.disableKeyboard));
-        debug::WriteLog("disable_mouse: " + btos(appArgs.disableMouse));
-        debug::WriteLog("startup: " + appArgs.startupArgs);
-
-        return 0;
-    }
+static inline std::string btos(bool b)
+{
+    return b ? "true" : "false";
 }
 
-int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int nShowCmd)
+/// <summary>
+/// Parses the command line arguments.
+/// </summary>
+/// <param name="appArgs">Data will be stored here.</param>
+/// <returns>0 on success</returns>
+static int ParseArgs(AppArgs& appArgs)
+{
+    CLI::App app("Creates melting like effect on users screen.", "Screen Melter");
+
+    app.add_option("-t,--time", appArgs.time, "Sleep time before visual effect (ms)");
+    app.add_option("-e,--exit_time", appArgs.exitTime, "Sleep time before visual effect (ms)");
+
+    app.add_option("-B,--start_on_boot", appArgs.startupArgs, "Run screen melter on next boot with given args.");
+
+    app.add_flag("-I,--disable_input", appArgs.disableInput, "Disable user input.");
+    app.add_flag("-K,--disable_keyboard", appArgs.disableKeyboard, "Disable user keyboard.");
+    app.add_flag("-M,--disable_mouse", appArgs.disableMouse, "Disable user mouse.");
+    app.add_flag("-k,--kill_explorer", appArgs.killExpolerOnStart, "Kill explorer process and restart when program closes");
+
+    int nArgs;
+    LPWSTR* szArglist = CommandLineToArgvW(GetCommandLineW(), &nArgs);
+    CLI11_PARSE(app, nArgs, szArglist);
+
+    DEBUG_INFO("sleep_for: {}", std::to_string(appArgs.time));
+    DEBUG_INFO("exit_time: {}", std::to_string(appArgs.exitTime));
+    DEBUG_INFO("disable_input: {}", btos(appArgs.disableInput));
+    DEBUG_INFO("disable_keyboard: {}", btos(appArgs.disableKeyboard));
+    DEBUG_INFO("disable_mouse: {}", btos(appArgs.disableMouse));
+    DEBUG_INFO("startup: '{}'", appArgs.startupArgs);
+    DEBUG_INFO("kill_expoler: {}", btos(appArgs.killExpolerOnStart));
+
+    return 0;
+}
+
+/// <summary>
+/// Terminates all expoler processes
+/// </summary>
+/// <returns>true on success</returns>
+static bool TerminateAllExplorerProcesses() {
+    HANDLE hProcessSnap;
+    PROCESSENTRY32 pe32;
+    pe32.dwSize = sizeof(PROCESSENTRY32);
+
+    // All processes snapshot
+    hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (hProcessSnap == INVALID_HANDLE_VALUE) {
+        DEBUG_ERR("CreateToolhelp32Snapshot (of processes) failed with error: {}", GetLastError());
+        return false;
+    }
+
+    // Get 1st proc info
+    if (!Process32First(hProcessSnap, &pe32)) {
+        DEBUG_ERR("Process32First failed with error: {}", GetLastError());
+        CloseHandle(hProcessSnap);
+        return false;
+    }
+
+    // Walk the snapshot of processes
+    do {
+        if (_tcsicmp(pe32.szExeFile, _T("explorer.exe")) == 0) {
+            HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, pe32.th32ProcessID);
+            if (hProcess == NULL) {
+                DEBUG_ERR("OpenProcess failed with error: {}", GetLastError());
+                CloseHandle(hProcessSnap);
+                return false;
+            }
+
+            // Terminate the process
+            if (!TerminateProcess(hProcess, 1)) {
+                DEBUG_ERR("TerminateProcess failed with error: {}", GetLastError());
+                CloseHandle(hProcess);
+                CloseHandle(hProcessSnap);
+                return false;
+            }
+
+            CloseHandle(hProcess);
+        }
+    } while (Process32Next(hProcessSnap, &pe32));
+
+    CloseHandle(hProcessSnap);
+    return true;
+}
+
+/// <summary>
+/// Restarts root explorer proc
+/// </summary>
+/// <returns>true on success</returns>
+static bool StartExplorerProcess() {
+    wchar_t expPath[] = {L"C:\\Windows\\explorer.exe"};
+
+    STARTUPINFO si = { sizeof(STARTUPINFO) };
+    PROCESS_INFORMATION pi;
+
+    if (!CreateProcessW(NULL, expPath, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+        DEBUG_ERR("CreateProcess failed with error: {}", GetLastError());
+        return false;
+    }
+
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    return true;
+}
+
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLine, int nShowCmd)
 {
     using namespace StartOnBoot;
 
@@ -124,7 +201,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
     AppArgs appArgs;
     if (ParseArgs(appArgs) != 0)
     {
-        debug::WriteLog("error parsing args");
+        DEBUG_ERR("error parsing args");
+        std::cerr << "Faild to parse args" << std::endl;
         return 1;
     }
 
@@ -181,6 +259,9 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
         }
     });
 
+    if (appArgs.killExpolerOnStart)
+        TerminateAllExplorerProcesses();
+
     srand((unsigned int)GetTickCount64());
     MSG msg = {0};
     while(msg.message != WM_QUIT)
@@ -205,6 +286,9 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPSTR lpCmdLine, int 
             SetCursorPos(0, 0);
 #endif
     }
+
+    if (appArgs.killExpolerOnStart)
+        StartExplorerProcess();
 
     exitThread.join();
     return 0;

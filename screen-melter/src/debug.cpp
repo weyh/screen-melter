@@ -24,12 +24,24 @@ namespace {
 
 namespace debug
 {
-    void WriteLog(const std::string& text)
+    void WriteLog(const char *type, const std::string& text)
     {
-#ifdef _DEBUG
         static std::ofstream log("debug.log", std::ios_base::out | std::ios_base::app);
+        log << TimeStamp() << ": " << type << "\t| " << text << std::endl;
+    }
 
-        log << TimeStamp() << ": " << text << std::endl;
-#endif
+    void info(const std::string& text)
+    {
+        WriteLog("INFO", text);
+    }
+
+    void warn(const std::string& text)
+    {
+        WriteLog("WARN", text);
+    }
+
+    void err(const std::string & text)
+    {
+        WriteLog("ERR", text);
     }
 }
