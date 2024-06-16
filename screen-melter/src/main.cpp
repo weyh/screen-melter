@@ -100,12 +100,13 @@ static int ParseArgs(AppArgs& appArgs)
     app.add_option("-t,--time", appArgs.time, "Sleep time before visual effect (ms)");
     app.add_option("-e,--exit_time", appArgs.exitTime, "Sleep time before visual effect (ms)");
 
-    app.add_option("-B,--start_on_boot", appArgs.startupArgs, "Run screen melter on next boot with given args.");
+    app.add_option("-B,--start_on_boot", appArgs.startupArgs, "Run screen melter on next boot with given args");
 
-    app.add_flag("-I,--disable_input", appArgs.disableInput, "Disable user input.");
-    app.add_flag("-K,--disable_keyboard", appArgs.disableKeyboard, "Disable user keyboard.");
-    app.add_flag("-M,--disable_mouse", appArgs.disableMouse, "Disable user mouse.");
+    app.add_flag("-I,--disable_input", appArgs.disableInput, "Disable user input");
+    app.add_flag("-K,--disable_keyboard", appArgs.disableKeyboard, "Disable user keyboard");
+    app.add_flag("-M,--disable_mouse", appArgs.disableMouse, "Disable user mouse");
     app.add_flag("-k,--kill_explorer", appArgs.killExpolerOnStart, "Kill explorer process and restart when program closes");
+    app.add_flag("-T,--topmost", appArgs.topmost, "Runs window always on top");
 
     int nArgs;
     LPWSTR* szArglist = CommandLineToArgvW(GetCommandLineW(), &nArgs);
@@ -116,8 +117,9 @@ static int ParseArgs(AppArgs& appArgs)
     DEBUG_INFO("disable_input: {}", btos(appArgs.disableInput));
     DEBUG_INFO("disable_keyboard: {}", btos(appArgs.disableKeyboard));
     DEBUG_INFO("disable_mouse: {}", btos(appArgs.disableMouse));
-    DEBUG_INFO("startup: '{}'", appArgs.startupArgs);
     DEBUG_INFO("kill_expoler: {}", btos(appArgs.killExpolerOnStart));
+    DEBUG_INFO("topmost: {}", btos(appArgs.topmost));
+    DEBUG_INFO("startup: '{}'", appArgs.startupArgs);
 
     return 0;
 }
@@ -191,7 +193,7 @@ static bool StartExplorerProcess() {
     return true;
 }
 
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLine, int nShowCmd)
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 {
     using namespace StartOnBoot;
 
@@ -237,7 +239,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLin
     if (!RegisterClass(&wndClass))
         return MessageBoxA(HWND_DESKTOP, "Cannot register class!", NULL, MB_ICONERROR | MB_OK);
 
-    HWND hWnd = CreateWindowA("Melter", NULL, WS_POPUP, screen.w, screen.x, screen.y, screen.z, HWND_DESKTOP, NULL, hInstance, NULL);
+    DWORD dwExStyle = appArgs.topmost ? WS_EX_TOPMOST : 0;
+    HWND hWnd = CreateWindowExA(dwExStyle, "Melter", NULL, WS_POPUP, screen.w, screen.x, screen.y, screen.z, HWND_DESKTOP, NULL, hInstance, NULL);
     if (!hWnd)
         return MessageBoxA(HWND_DESKTOP, "Cannot create window!", NULL, MB_ICONERROR | MB_OK);
 

@@ -6,20 +6,18 @@
 #include <stdio.h>
 #include <time.h>
 
-namespace {
-    std::string TimeStamp()
-    {
-        time_t rawtime;
-        struct tm timeinfo;
-        char buffer[80];
+static std::string TimeStamp()
+{
+    time_t rawtime;
+    struct tm timeinfo;
+    char buffer[80];
 
-        time(&rawtime);
-        localtime_s(&timeinfo, &rawtime);
+    time(&rawtime);
+    localtime_s(&timeinfo, &rawtime);
 
-        strftime(buffer, 80, "%F %H:%M:%S", &timeinfo);
+    strftime(buffer, 80, "%F %H:%M:%S", &timeinfo);
 
-        return buffer;
-    }
+    return buffer;
 }
 
 namespace debug

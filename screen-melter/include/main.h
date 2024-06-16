@@ -17,12 +17,12 @@ public:
     bool disableInput;
     bool disableKeyboard;
     bool disableMouse;
+    bool killExpolerOnStart;
+    bool topmost;
 
     std::string startupArgs;
 
-    bool killExpolerOnStart;
-
     AppArgs() : time(0), exitTime(-1), disableInput(false), disableKeyboard(false), disableMouse(false),
-        startupArgs(""), killExpolerOnStart(false)
+        killExpolerOnStart(false), topmost(false), startupArgs("")
     { }
 };
