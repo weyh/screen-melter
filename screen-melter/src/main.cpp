@@ -1,6 +1,7 @@
 // Modified by weyh
 // Inspired by Napalm/MetalHead (http://www.rohitab.com/discuss/topic/23191-screen-melter/?p=190669)
 
+#include "network_trigger_server.h"
 #include "framework.h"
 #include "main.h"
 #include "start_on_boot.h"
@@ -12,11 +13,13 @@
 #include <chrono>
 #include <thread>
 #include <string>
+#include <utility>
 #include <tlhelp32.h>
 
 constexpr int meltWidth = 150;
 constexpr int meltHeight = 15;
 constexpr int interval = 1;
+constexpr UINT WM_NETWORK_TRIGGER = WM_APP + 1;
 Vector4<int> screen;
 HHOOK keyboardHhook;
 
@@ -108,9 +111,27 @@ static int ParseArgs(AppArgs& appArgs)
     app.add_flag("-k,--kill_explorer", appArgs.killExpolerOnStart, "Kill explorer process and restart when program closes");
     app.add_flag("-T,--topmost", appArgs.topmost, "Runs window always on top");
 
+    app.add_flag("--enable_network", appArgs.enableNetwork, "Wait for an authenticated TCP magic packet");
+    app.add_option("--network_key", appArgs.networkKey, "Shared key required for network activation");
+    app.add_option("--port", appArgs.port, "TCP listening port (default: 47621)");
+    app.add_option("--network_timeout", appArgs.networkTimeout, "Maximum request receive time per client (ms; default: 5000)");
+
     int nArgs;
     LPWSTR* szArglist = CommandLineToArgvW(GetCommandLineW(), &nArgs);
     CLI11_PARSE(app, nArgs, szArglist);
+
+    if (appArgs.enableNetwork && appArgs.networkKey.empty()) {
+        std::cerr << "--network_key must be provided and non-empty when --enable_network is used.\n";
+        return 1;
+    }
+    if (appArgs.port < 1 || appArgs.port > 65535) {
+        std::cerr << "--port must be in the range 1 to 65535.\n";
+        return 1;
+    }
+    if (appArgs.networkTimeout < 1 || appArgs.networkTimeout > 60000) {
+        std::cerr << "--network_timeout must be in the range 1 to 60000 milliseconds.\n";
+        return 1;
+    }
 
     DEBUG_INFO("sleep_for: {}", std::to_string(appArgs.time));
     DEBUG_INFO("exit_time: {}", std::to_string(appArgs.exitTime));
@@ -120,6 +141,10 @@ static int ParseArgs(AppArgs& appArgs)
     DEBUG_INFO("kill_expoler: {}", btos(appArgs.killExpolerOnStart));
     DEBUG_INFO("topmost: {}", btos(appArgs.topmost));
     DEBUG_INFO("startup: '{}'", appArgs.startupArgs);
+    DEBUG_INFO("enable_network: '{}'", appArgs.enableNetwork);
+    DEBUG_INFO("network_key: '{}'", appArgs.networkKey);
+    DEBUG_INFO("port: '{}'", appArgs.port);
+    DEBUG_INFO("network_timeout: '{}'", appArgs.networkTimeout);
 
     return 0;
 }
@@ -213,13 +238,49 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         const HRESULT hr = SetupStartOnBoot(appArgs.startupArgs);
         if(hr == S_OK)
             std::cout << "The program will be run on next boot with '" << appArgs.startupArgs << "' args." << std::endl;
-        else
+        else {
             std::cerr << "Failed to create necessary files to run on next boot!" << std::endl;
+        }
 
         return hr == S_OK;
     }
 
-    // Wait before the effect starts
+    if (appArgs.enableNetwork) {
+        // Create the thread message queue before the worker can post its activation event.
+        MSG queuedMessage{};
+        PeekMessage(&queuedMessage, nullptr, WM_USER, WM_USER, PM_NOREMOVE);
+
+        const DWORD uiThreadId = GetCurrentThreadId();
+        NetworkTriggerServer server(appArgs.port, appArgs.networkTimeout, std::move(appArgs.networkKey), 
+            [uiThreadId] { PostThreadMessageW(uiThreadId, WM_NETWORK_TRIGGER, 0, 0); }
+        );
+
+        std::string startupError;
+        if (!server.Start(startupError)) {
+            MessageBoxA(HWND_DESKTOP, startupError.c_str(), "Network listener error", MB_ICONERROR | MB_OK);
+            return 1;
+        }
+
+        bool activated = false;
+        MSG triggerMessage{};
+        while (!activated) {
+            const BOOL result = GetMessageW(&triggerMessage, nullptr, 0, 0);
+
+            if (result <= 0)
+                return result == 0 ? 0 : 1;
+
+            if (triggerMessage.message == WM_NETWORK_TRIGGER) {
+                activated = true;
+            }
+            else {
+                TranslateMessage(&triggerMessage);
+                DispatchMessageW(&triggerMessage);
+            }
+        }
+        server.Stop();
+    }
+
+    // Wait before the effect starts, whether started automatically or by network request.
     std::this_thread::sleep_for(std::chrono::milliseconds(appArgs.time));
 
     // Setting up window
